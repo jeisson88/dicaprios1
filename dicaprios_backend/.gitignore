@@ -1,0 +1,33 @@
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore virtual environments
+venv/
+dicaprios_env/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore SQLite database
+*.sqlite3
+
+# Ignore logs and temporary files
+*.log
+tmp/
+*.bak
+
+# Ignore environment variables files
+.env
+
+# Ignore compiled code
+*.so
+
+# Ignore migrations
+**/migrations/
+
+# Ignore IDE settings
+.vscode/
+.idea/
