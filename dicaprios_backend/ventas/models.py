@@ -3,12 +3,29 @@ from clientes.models import Cliente
 from productos.models import Producto
 
 class Pedido(models.Model):
+    # Definir opciones para el esado
+    ESTADO_PENDIENTE = 'Pendiente'
+    ESTADO_FACTURADO = 'Facturado'
+    ESTADO_CANCELADO = 'Cancelado'
+    ESTADO_CHOICES = [
+        (ESTADO_PENDIENTE, 'Pendiente'),
+        (ESTADO_FACTURADO, 'Facturado'),
+        (ESTADO_CANCELADO, 'Cancelado'),
+    ]
+
+
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     fecha = models.DateField(auto_now_add=True)
-    estado = models.CharField(max_length=45)
+    estado = models.CharField(
+        max_length=45,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_PENDIENTE
+    )
 
     def __str__(self):
-        return f'Pedido {self.id} - {self.cliente.nombre}'
+        
+        nombre_cliente = self.cliente.nombre if hasattr(self.cliente, 'nombre') and self.cliente.nombre else "Desconocido"
+        return f'Pedido {self.id} - Cliente: {nombre_cliente} - Estado: {self.get_estado_display()}'
     
 
 class DetallePedido(models.Model):
