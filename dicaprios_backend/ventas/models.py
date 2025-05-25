@@ -48,7 +48,7 @@ class Factura(models.Model):
         return f'Factura {self.id} - Cliente {self.cliente.nombre}'
     
 
-class DetalleFactrua(models.Model):
+class DetalleFactura(models.Model):
     factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name='detalles')
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     cantidad = models.IntegerField()
