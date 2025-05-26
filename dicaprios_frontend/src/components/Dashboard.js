@@ -78,10 +78,10 @@ const Dashboard = ({ children }) => {
               <ShoppingCart sx={{ mr: 2 }} />
               <ListItemText primary="Gestión de Pedidos" />
             </ListItem>
-            {/* <ListItem button component={Link} to="/facturas">
+            <ListItem button component={Link} to="/solicitud-proveedores">
               <Receipt sx={{ mr: 2 }} />
-              <ListItemText primary="Facturación" />
-            </ListItem> */}
+              <ListItemText primary="Solicitud a Proveedores" />
+            </ListItem>
           </List>
         </Box>
       </Drawer>
