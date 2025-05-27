@@ -32,6 +32,7 @@ class Producto(models.Model):
         related_name='productos'   # Nombre para la relación inversa desde Proveedor
     )
     # --- FIN NUEVO CAMPO ---
+    imagen = models.ImageField(upload_to='productos_imagenes/', blank=True, null=True)
 
     def __str__(self):
         return self.nombre_producto

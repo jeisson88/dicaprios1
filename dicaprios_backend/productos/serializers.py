@@ -44,7 +44,8 @@ class ProductoSerializer(serializers.ModelSerializer):
             'categoria',         # ID para escribir
             'categoria_nombre',  # Nombre para leer
             'proveedor',         # ID para escribir
-            'proveedor_nombre'   # Nombre para leer
+            'proveedor_nombre',  # Nombre para leer
+            'imagen',
         ]
         # Si prefieres que el campo 'categoria' y 'proveedor' directamente
         # manejen tanto la representación de objeto (lectura) como el ID (escritura),
