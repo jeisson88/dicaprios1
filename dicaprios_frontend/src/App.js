@@ -12,6 +12,7 @@ import ListadoFacturas from './components/FacturasList';
 import Login from './components/Login';
 import HomePage from './components/HomePage';
 import SolicitudProveedor from './components/SolicitudProveedor'; 
+import VisualSearchPage from './views/VisualSearchPage';
 
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
                   <Route path="/facturas" element={<Facturas />} />
                   <Route path="/facturaslista" element={<ListadoFacturas />} />
                   <Route path="/solicitud-proveedores" element={<SolicitudProveedor />} />
+                  <Route path="/buscar-por-imagen" element={<VisualSearchPage />} />
                 </Routes>
               </Dashboard>
             ) : (

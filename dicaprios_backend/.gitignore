@@ -31,4 +31,4 @@ tmp/
 # Ignore IDE settings
 .vscode/
 .idea/
-media/ia_embeddings/
+# media/ia_embeddings/

@@ -55,7 +55,7 @@ ALL_PRODUCT_IDS = None
 IA_COMPONENTS_LOADED = False
 IA_LOAD_ERROR = None # Para almacenar cualquier error durante la carga
 
-SIMILARITY_THRESHOLD = 0.70 # Umbral de similitud (ajustar según pruebas)
+SIMILARITY_THRESHOLD = 0.60 # Umbral de similitud (ajustar según pruebas)
 
 def _load_ia_components():
     """

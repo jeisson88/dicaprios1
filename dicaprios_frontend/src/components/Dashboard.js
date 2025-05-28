@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Drawer, List, ListItem, ListItemText, Box, CssBaseline, AppBar, Toolbar, Typography, IconButton, Button } from '@mui/material';
-import { Home, People, ShoppingCart, Category, LocalShipping, Receipt, Menu, Logout } from '@mui/icons-material';
+import { Home, People, ShoppingCart, Category, LocalShipping, Receipt, Menu, Logout,Search } from '@mui/icons-material';
+
 
 const Dashboard = ({ children }) => {
   const navigate = useNavigate();
@@ -81,6 +82,11 @@ const Dashboard = ({ children }) => {
             <ListItem button component={Link} to="/solicitud-proveedores">
               <Receipt sx={{ mr: 2 }} />
               <ListItemText primary="Solicitud a Proveedores" />
+            </ListItem>
+            <ListItem button component={Link} to="/buscar-por-imagen">
+              
+              <Search sx={{ mr: 2 }} />
+              <ListItemText primary="Buscador Visual" />
             </ListItem>
           </List>
         </Box>

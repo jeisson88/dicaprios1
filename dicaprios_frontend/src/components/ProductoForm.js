@@ -4,7 +4,8 @@ import axios from 'axios';
 import { TextField, Button, Container, Typography, Box, MenuItem, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'http://127.0.0.1:8000/api'; // URL base para llamadas API
+// const BACKEND_SERVER_URL = 'http://127.0.0.1:8000'; // URL base para construir URLs de imágenes si no son absolutas
 
 const ProductoForm = ({ producto, onProductoUpdated }) => {
   const [nombreProducto, setNombreProducto] = useState('');
@@ -14,8 +15,8 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
   const [stock, setStock] = useState('');
   const [categoria, setCategoria] = useState('');
   const [proveedor, setProveedor] = useState('');
-  const [imagenArchivo, setImagenArchivo] = useState(null); // <--- NUEVO ESTADO PARA EL ARCHIVO DE IMAGEN
-  const [imagenPreview, setImagenPreview] = useState(null); // <--- NUEVO ESTADO PARA LA VISTA PREVIA DE IMAGEN (opcional)
+  const [imagenArchivo, setImagenArchivo] = useState(null);
+  const [imagenPreview, setImagenPreview] = useState(null);
 
 
   const [categorias, setCategorias] = useState([]);
@@ -53,18 +54,19 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
           setTalla(producto.talla || '');
           setColor(producto.color || '');
           setStock(producto.stock || '');
-          setCategoria(producto.categoria || '');
-          setProveedor(producto.proveedor || '');
-          // Si 'producto.imagen' contiene la URL de la imagen actual, puedes usarla para la vista previa
-          if (producto.imagen) {
-            // Asegúrate de que la URL sea completa si es relativa
-            const imageUrl = producto.imagen.startsWith('http') ? producto.imagen : `${API_BASE_URL.replace('/api', '')}${producto.imagen}`;
-            setImagenPreview(imageUrl);
+          setCategoria(producto.categoria || ''); // Asume que es el ID
+          setProveedor(producto.proveedor || ''); // Asume que es el ID
+          
+          // --- CAMBIO AQUÍ: Usar producto.imagen_url ---
+          // producto.imagen_url ya debería ser una URL absoluta devuelta por el backend
+          if (producto.imagen_url) {
+            setImagenPreview(producto.imagen_url);
           } else {
             setImagenPreview(null);
           }
-          setImagenArchivo(null); // Resetear el archivo seleccionado al cargar un producto existente
+          setImagenArchivo(null); 
         } else {
+          // Resetear campos para un nuevo producto
           setNombreProducto('');
           setPrecio('');
           setTalla('');
@@ -87,18 +89,16 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
     fetchInitialData();
   }, [producto]);
 
-  // --- NUEVA FUNCIÓN PARA MANEJAR CAMBIO DE IMAGEN ---
   const handleImagenChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImagenArchivo(file);
-      setImagenPreview(URL.createObjectURL(file)); // Crear URL para vista previa local
+      setImagenPreview(URL.createObjectURL(file)); 
     } else {
       setImagenArchivo(null);
-      // Si se deselecciona, y es un producto existente con imagen, mostrar la imagen original
-      if (producto && producto.imagen) {
-        const imageUrl = producto.imagen.startsWith('http') ? producto.imagen : `${API_BASE_URL.replace('/api', '')}${producto.imagen}`;
-        setImagenPreview(imageUrl);
+      // --- CAMBIO AQUÍ: Usar producto.imagen_url para restaurar la vista previa ---
+      if (producto && producto.imagen_url) {
+        setImagenPreview(producto.imagen_url);
       } else {
         setImagenPreview(null);
       }
@@ -117,50 +117,36 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
       return;
     }
 
-    // --- USAR FormData PARA ENVIAR DATOS, INCLUYENDO ARCHIVOS ---
     const formData = new FormData();
     formData.append('nombre_producto', nombreProducto);
     formData.append('precio', precio);
-    if (talla) formData.append('talla', talla); // Solo añadir si tiene valor
+    if (talla) formData.append('talla', talla);
     formData.append('color', color);
     formData.append('stock', stock);
-    if (categoria) formData.append('categoria', categoria);
-    if (proveedor) formData.append('proveedor', proveedor);
+    if (categoria) formData.append('categoria', categoria); // Enviar el ID
+    if (proveedor) formData.append('proveedor', proveedor); // Enviar el ID
 
-    // Añadir la imagen solo si se ha seleccionado un nuevo archivo
-    // Si no se selecciona un nuevo archivo y es una edición, el backend no debería borrar la imagen existente
-    // a menos que se envíe explícitamente null o un string vacío para 'imagen',
-    // pero eso depende de cómo maneje tu backend las actualizaciones parciales (PATCH vs PUT).
-    // Con PUT, si no envías 'imagen', puede interpretarse como que se quiere eliminar.
-    // Con `blank=True, null=True` en el modelo y `required=False` en el serializador,
-    // no enviar el campo imagen durante un PUT no debería eliminarla si ya existe.
-    // Si se quiere permitir borrar la imagen, se necesitaría una lógica adicional.
     if (imagenArchivo) {
-      formData.append('imagen', imagenArchivo);
+      formData.append('imagen', imagenArchivo); // El backend espera 'imagen' para el archivo
     }
+    // Si no se sube un nuevo archivo (imagenArchivo es null) y es una edición,
+    // no se envía el campo 'imagen' en el FormData. El backend debería
+    // conservar la imagen existente si el campo no se envía.
 
     try {
       let response;
       const config = {
         headers: {
           Authorization: `Bearer ${token}`,
-          // Axios establece 'Content-Type': 'multipart/form-data' automáticamente con FormData
         },
       };
 
       if (producto && producto.id) {
-        // Editar producto existente
-        // Usar PUT o PATCH. PATCH es mejor para actualizaciones parciales.
-        // Si tu backend espera todos los campos con PUT y quieres evitar borrar la imagen
-        // si no se sube una nueva, considera usar PATCH o asegurar que tu PUT no borre campos no enviados.
-        // Para este ejemplo, asumimos que el backend maneja bien la ausencia del campo 'imagen' en una actualización
-        // y no la borra si no se proporciona una nueva.
         response = await axios.put(`${API_BASE_URL}/productos/${producto.id}/`, formData, config);
         if (response.status === 200) {
           alert('Producto actualizado exitosamente');
         }
       } else {
-        // Crear un nuevo producto
         response = await axios.post(`${API_BASE_URL}/productos/`, formData, config);
         if (response.status === 201) {
           alert('Producto agregado exitosamente');
@@ -168,19 +154,17 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
       }
 
       if (onProductoUpdated) {
-        onProductoUpdated(response.data);
+        onProductoUpdated(response.data); 
       }
-      navigate('/productos');
+      navigate('/productos'); 
     } catch (err) {
       console.error('Error al guardar el producto', err.response || err);
       let errorMessage = 'Error al guardar el producto.';
       if (err.response && err.response.data) {
-        // Intentar obtener un mensaje de error más específico del backend
         const responseData = err.response.data;
         if (typeof responseData === 'string') {
           errorMessage = responseData;
         } else if (typeof responseData === 'object') {
-          // Si es un objeto (ej. errores de validación de DRF), intentar formatearlo
           errorMessage = Object.entries(responseData)
             .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
             .join('\n');
@@ -294,23 +278,22 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
             ))}
           </TextField>
 
-          {/* --- NUEVO CAMPO PARA SUBIR IMAGEN --- */}
           <TextField
             type="file"
             label="Imagen del Producto"
             margin="normal"
             fullWidth
             InputLabelProps={{
-              shrink: true, // Para que el label no se superponga con el texto "No file chosen"
+              shrink: true,
             }}
             inputProps={{
-              accept:"image/*" // Aceptar solo archivos de imagen
+              accept:"image/*"
             }}
             onChange={handleImagenChange}
-            helperText={imagenArchivo ? imagenArchivo.name : (producto && producto.imagen ? "Hay una imagen actual. Sube una nueva para reemplazarla." : "Sube una imagen para el producto.")}
+            // --- CAMBIO AQUÍ: Usar producto.imagen_url para el helperText ---
+            helperText={imagenArchivo ? imagenArchivo.name : (producto && producto.imagen_url ? "Hay una imagen actual. Sube una nueva para reemplazarla." : "Sube una imagen para el producto.")}
           />
 
-          {/* --- VISTA PREVIA DE LA IMAGEN (OPCIONAL) --- */}
           {imagenPreview && (
             <Box sx={{ my: 2, textAlign: 'center' }}>
               <Typography variant="subtitle2">Vista previa:</Typography>
