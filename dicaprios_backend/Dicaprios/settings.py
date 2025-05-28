@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'clientes',
     'productos',
     'ventas',
+    'visual_searcher',
 ]
 
 MIDDLEWARE = [
