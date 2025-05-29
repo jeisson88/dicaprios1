@@ -1,29 +1,29 @@
-// src/components/ProductoForm.js
+// dicaprios_frontend/src/components/ProductoForm.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { TextField, Button, Container, Typography, Box, MenuItem, CircularProgress } from '@mui/material'; // CircularProgress añadido
+import { TextField, Button, Container, Typography, Box, MenuItem, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-// Es una buena práctica mover las URL de la API a un archivo de configuración o variables de entorno
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'http://127.0.0.1:8000/api'; // URL base para llamadas API
+// const BACKEND_SERVER_URL = 'http://127.0.0.1:8000'; // URL base para construir URLs de imágenes si no son absolutas
 
 const ProductoForm = ({ producto, onProductoUpdated }) => {
-  // Estados para los campos del formulario
   const [nombreProducto, setNombreProducto] = useState('');
   const [precio, setPrecio] = useState('');
   const [talla, setTalla] = useState('');
   const [color, setColor] = useState('');
   const [stock, setStock] = useState('');
-  const [categoria, setCategoria] = useState(''); // ID de la categoría seleccionada
-  const [proveedor, setProveedor] = useState(''); // NUEVO: ID del proveedor seleccionado
+  const [categoria, setCategoria] = useState('');
+  const [proveedor, setProveedor] = useState('');
+  const [imagenArchivo, setImagenArchivo] = useState(null);
+  const [imagenPreview, setImagenPreview] = useState(null);
 
-  // Estados para cargar datos de los selectores
+
   const [categorias, setCategorias] = useState([]);
-  const [proveedores, setProveedores] = useState([]); // NUEVO: Lista de proveedores
+  const [proveedores, setProveedores] = useState([]);
 
-  // Estados de carga y error
-  const [loading, setLoading] = useState(false); // Para el envío del formulario
-  const [dataLoading, setDataLoading] = useState(false); // Para la carga inicial de datos (categorías, proveedores)
+  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -32,7 +32,6 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
       setDataLoading(true);
       setError(null);
       try {
-        // Obtener token de autenticación
         const token = localStorage.getItem('token');
         if (!token) {
           setError("Token de autenticación no encontrado. Por favor, inicie sesión.");
@@ -41,26 +40,33 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
         }
         const headers = { Authorization: `Bearer ${token}` };
 
-        // Peticiones en paralelo para categorías y proveedores
         const [categoriasResponse, proveedoresResponse] = await Promise.all([
           axios.get(`${API_BASE_URL}/categorias/`, { headers }),
-          axios.get(`${API_BASE_URL}/proveedores/`, { headers }) // NUEVO: Obtener proveedores
+          axios.get(`${API_BASE_URL}/proveedores/`, { headers })
         ]);
 
         setCategorias(categoriasResponse.data);
-        setProveedores(proveedoresResponse.data); // NUEVO: Guardar proveedores
+        setProveedores(proveedoresResponse.data);
 
-        // Si se está editando un producto, rellenar los campos
         if (producto) {
           setNombreProducto(producto.nombre_producto || '');
           setPrecio(producto.precio || '');
           setTalla(producto.talla || '');
           setColor(producto.color || '');
           setStock(producto.stock || '');
-          setCategoria(producto.categoria || ''); // Asume que producto.categoria es el ID
-          setProveedor(producto.proveedor || ''); // NUEVO: Asume que producto.proveedor es el ID
+          setCategoria(producto.categoria || ''); // Asume que es el ID
+          setProveedor(producto.proveedor || ''); // Asume que es el ID
+          
+          // --- CAMBIO AQUÍ: Usar producto.imagen_url ---
+          // producto.imagen_url ya debería ser una URL absoluta devuelta por el backend
+          if (producto.imagen_url) {
+            setImagenPreview(producto.imagen_url);
+          } else {
+            setImagenPreview(null);
+          }
+          setImagenArchivo(null); 
         } else {
-          // Si es un nuevo producto, resetear los campos (útil si el form se reutiliza)
+          // Resetear campos para un nuevo producto
           setNombreProducto('');
           setPrecio('');
           setTalla('');
@@ -68,6 +74,8 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
           setStock('');
           setCategoria('');
           setProveedor('');
+          setImagenArchivo(null);
+          setImagenPreview(null);
         }
 
       } catch (err) {
@@ -79,7 +87,23 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
     };
 
     fetchInitialData();
-  }, [producto]); // Dependencia 'producto' para recargar si cambia el producto a editar
+  }, [producto]);
+
+  const handleImagenChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImagenArchivo(file);
+      setImagenPreview(URL.createObjectURL(file)); 
+    } else {
+      setImagenArchivo(null);
+      // --- CAMBIO AQUÍ: Usar producto.imagen_url para restaurar la vista previa ---
+      if (producto && producto.imagen_url) {
+        setImagenPreview(producto.imagen_url);
+      } else {
+        setImagenPreview(null);
+      }
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -93,44 +117,62 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
       return;
     }
 
-    // Construir el payload. El backend espera los IDs para categoría y proveedor.
-    const productoData = {
-      nombre_producto: nombreProducto,
-      precio: precio,
-      talla: talla || null, // Enviar null si está vacío y el backend lo permite
-      color: color,
-      stock: stock,
-      categoria: categoria || null, // Enviar null si no se selecciona y es opcional
-      proveedor: proveedor || null, // NUEVO: Enviar ID del proveedor o null
-    };
+    const formData = new FormData();
+    formData.append('nombre_producto', nombreProducto);
+    formData.append('precio', precio);
+    if (talla) formData.append('talla', talla);
+    formData.append('color', color);
+    formData.append('stock', stock);
+    if (categoria) formData.append('categoria', categoria); // Enviar el ID
+    if (proveedor) formData.append('proveedor', proveedor); // Enviar el ID
+
+    if (imagenArchivo) {
+      formData.append('imagen', imagenArchivo); // El backend espera 'imagen' para el archivo
+    }
+    // Si no se sube un nuevo archivo (imagenArchivo es null) y es una edición,
+    // no se envía el campo 'imagen' en el FormData. El backend debería
+    // conservar la imagen existente si el campo no se envía.
 
     try {
       let response;
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
       if (producto && producto.id) {
-        // Editar producto existente
-        response = await axios.put(`${API_BASE_URL}/productos/${producto.id}/`, productoData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        response = await axios.put(`${API_BASE_URL}/productos/${producto.id}/`, formData, config);
         if (response.status === 200) {
           alert('Producto actualizado exitosamente');
         }
       } else {
-        // Crear un nuevo producto
-        response = await axios.post(`${API_BASE_URL}/productos/`, productoData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        response = await axios.post(`${API_BASE_URL}/productos/`, formData, config);
         if (response.status === 201) {
           alert('Producto agregado exitosamente');
         }
       }
 
       if (onProductoUpdated) {
-        onProductoUpdated(response.data); // Devolver el producto actualizado/creado
+        onProductoUpdated(response.data); 
       }
-      navigate('/productos'); // O a donde prefieras redirigir
+      navigate('/productos'); 
     } catch (err) {
       console.error('Error al guardar el producto', err.response || err);
-      setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || err.message || 'Error al guardar el producto');
+      let errorMessage = 'Error al guardar el producto.';
+      if (err.response && err.response.data) {
+        const responseData = err.response.data;
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (typeof responseData === 'object') {
+          errorMessage = Object.entries(responseData)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .join('\n');
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -147,7 +189,7 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
 
   return (
     <Container maxWidth="sm">
-      <Box sx={{ mt: 4, mb: 4, textAlign: 'center' }}> {/* Ajustado margen superior e inferior */}
+      <Box sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
         <Typography variant="h4" component="h1" gutterBottom>
           {producto ? 'Editar Producto' : 'Añadir Nuevo Producto'}
         </Typography>
@@ -159,14 +201,14 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
             fullWidth
             value={nombreProducto}
             onChange={(e) => setNombreProducto(e.target.value)}
-            required // Campo requerido
+            required
           />
           <TextField
             label="Precio"
             variant="outlined"
             margin="normal"
-            type="number" // Tipo número para validación básica
-            inputProps={{ step: "0.01" }} // Para decimales
+            type="number"
+            inputProps={{ step: "0.01" }}
             fullWidth
             value={precio}
             onChange={(e) => setPrecio(e.target.value)}
@@ -179,7 +221,6 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
             fullWidth
             value={talla}
             onChange={(e) => setTalla(e.target.value)}
-            // No es requerido, ya que en el backend se puso blank=True, null=True
           />
           <TextField
             label="Color"
@@ -206,9 +247,8 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
             variant="outlined"
             margin="normal"
             fullWidth
-            value={categoria || ''} // Usar '' para valor no seleccionado
+            value={categoria || ''}
             onChange={(e) => setCategoria(e.target.value)}
-            // No es requerido si en el backend categoria es opcional (null=True, blank=True)
           >
             <MenuItem value="">
               <em>Seleccione una categoría (opcional)</em>
@@ -219,17 +259,14 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
               </MenuItem>
             ))}
           </TextField>
-
-          {/* --- NUEVO SELECTOR PARA PROVEEDOR --- */}
           <TextField
             select
             label="Proveedor"
             variant="outlined"
             margin="normal"
             fullWidth
-            value={proveedor || ''} // Usar '' para valor no seleccionado
+            value={proveedor || ''}
             onChange={(e) => setProveedor(e.target.value)}
-            // No es requerido, ya que en el backend proveedor es opcional (null=True, blank=True)
           >
             <MenuItem value="">
               <em>Seleccione un proveedor (opcional)</em>
@@ -240,7 +277,34 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
               </MenuItem>
             ))}
           </TextField>
-          {/* --- FIN NUEVO SELECTOR --- */}
+
+          <TextField
+            type="file"
+            label="Imagen del Producto"
+            margin="normal"
+            fullWidth
+            InputLabelProps={{
+              shrink: true,
+            }}
+            inputProps={{
+              accept:"image/*"
+            }}
+            onChange={handleImagenChange}
+            // --- CAMBIO AQUÍ: Usar producto.imagen_url para el helperText ---
+            helperText={imagenArchivo ? imagenArchivo.name : (producto && producto.imagen_url ? "Hay una imagen actual. Sube una nueva para reemplazarla." : "Sube una imagen para el producto.")}
+          />
+
+          {imagenPreview && (
+            <Box sx={{ my: 2, textAlign: 'center' }}>
+              <Typography variant="subtitle2">Vista previa:</Typography>
+              <img 
+                src={imagenPreview} 
+                alt="Vista previa de la imagen" 
+                style={{ maxWidth: '100%', maxHeight: '200px', marginTop: '10px', border: '1px solid #ddd' }} 
+              />
+            </Box>
+          )}
+
 
           {error && (
             <Typography color="error" variant="body2" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
@@ -251,9 +315,9 @@ const ProductoForm = ({ producto, onProductoUpdated }) => {
             variant="contained"
             color="primary"
             fullWidth
-            sx={{ mt: 3, mb: 2 }} // Ajustado margen
+            sx={{ mt: 3, mb: 2 }}
             type="submit"
-            disabled={loading || dataLoading} // Deshabilitar si se está cargando datos o enviando
+            disabled={loading || dataLoading}
           >
             {loading ? <CircularProgress size={24} /> : (producto ? 'Guardar Cambios' : 'Añadir Producto')}
           </Button>

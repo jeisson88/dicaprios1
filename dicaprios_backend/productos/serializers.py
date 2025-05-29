@@ -1,54 +1,70 @@
+# dicaprios_backend/productos/serializers.py
+
 from rest_framework import serializers
-from .models import Producto, Categoria, Proveedor # Asegúrate de importar Proveedor
+from .models import Producto, Categoria, Proveedor
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = ('id', 'nombre_categoria') # Especifica campos para ser más explícito
+        fields = ('id', 'nombre_categoria')
 
 class ProveedorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Proveedor
-        fields = ('id', 'nombre_proveedor', 'contacto', 'telefono', 'direccion') # O __all__
+        fields = ('id', 'nombre_proveedor', 'contacto', 'telefono', 'direccion')
 
 class ProductoSerializer(serializers.ModelSerializer):
-    # Para mostrar el nombre de la categoría en lugar del ID al leer (opcional)
-    categoria_nombre = serializers.CharField(source='categoria.nombre_categoria', read_only=True)
-    # Para enviar el ID de la categoría al crear/actualizar
+    categoria_nombre = serializers.CharField(source='categoria.nombre_categoria', read_only=True, allow_null=True)
     categoria = serializers.PrimaryKeyRelatedField(
-        queryset=Categoria.objects.all(), 
-        allow_null=True, # Si blank=True, null=True en el modelo
-        required=False   # Si blank=True, null=True en el modelo
+        queryset=Categoria.objects.all(),
+        allow_null=True,
+        required=False
     )
-
-    # --- NUEVA SECCIÓN PARA PROVEEDOR ---
-    # Para mostrar el nombre del proveedor al leer (opcional)
     proveedor_nombre = serializers.CharField(source='proveedor.nombre_proveedor', read_only=True, allow_null=True)
-    # Para enviar el ID del proveedor al crear/actualizar
     proveedor = serializers.PrimaryKeyRelatedField(
-        queryset=Proveedor.objects.all(), 
-        allow_null=True, # Coincide con null=True en el modelo
-        required=False   # Coincide con blank=True en el modelo
+        queryset=Proveedor.objects.all(),
+        allow_null=True,
+        required=False
     )
-    # --- FIN NUEVA SECCIÓN ---
+    
+    # Para LEER la URL de la imagen
+    imagen_url = serializers.SerializerMethodField()
+    
+    # Para ESCRIBIR (subir) el archivo de imagen.
+    # Este campo se usará cuando se envíen datos al backend (POST, PUT, PATCH).
+    # No se incluirá en la respuesta GET si 'imagen_url' ya está presente y este es write_only.
+    imagen = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Producto
         fields = [
-            'id', 
-            'nombre_producto', 
-            'precio', 
-            'talla', 
-            'color', 
-            'stock', 
-            'categoria',         # ID para escribir
-            'categoria_nombre',  # Nombre para leer
-            'proveedor',         # ID para escribir
-            'proveedor_nombre'   # Nombre para leer
+            'id',
+            'nombre_producto',
+            'precio',
+            'talla',
+            'color',
+            'stock',
+            'categoria',
+            'categoria_nombre',
+            'proveedor',
+            'proveedor_nombre',
+            'imagen_url', # Para la lectura de la URL
+            'imagen'      # Para la escritura/subida del archivo
         ]
-        # Si prefieres que el campo 'categoria' y 'proveedor' directamente
-        # manejen tanto la representación de objeto (lectura) como el ID (escritura),
-        # puedes usar la técnica de anidar el serializador para read_only=True
-        # y PrimaryKeyRelatedField para write_only=True, o simplemente usar
-        # StringRelatedField para lectura si el __str__ del modelo es suficiente.
-        # Por simplicidad aquí, separamos los campos de lectura de nombre y escritura de ID.
+        # Si quieres que 'imagen' nunca aparezca en la respuesta JSON (GET),
+        # pero sí se use para subir, puedes mantenerlo como write_only=True
+        # y quitarlo de 'fields' si solo quieres 'imagen_url' en la salida.
+        # Sin embargo, tenerlo en 'fields' y marcado como write_only=True es claro.
+
+    def get_imagen_url(self, obj):
+        request = self.context.get('request')
+        if obj.imagen and hasattr(obj.imagen, 'url'):
+            if request is not None:
+                return request.build_absolute_uri(obj.imagen.url)
+            return obj.imagen.url
+        return None
+
+    # No es necesario un método create o update personalizado aquí si
+    # el ModelSerializer estándar maneja bien los campos, incluido el ImageField.
+    # DRF tomará el archivo del campo 'imagen' (gracias a write_only=True)
+    # y lo guardará en el modelo Producto.imagen.
